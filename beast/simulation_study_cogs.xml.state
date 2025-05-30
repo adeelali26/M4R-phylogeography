@@ -1,0 +1,23 @@
+<itsabeastystatewerein version='2.0' sample='10000000'>
+<statenode id='Tree.t:tree'>((((4:0.056482200225094786,8:0.056482200225094786)27:0.01688357405468545,12:0.07336577427978024)30:0.05881810945954792,(((0:0.050089662995197154,((16:0.016273848008735943,6:0.016273848008735943)20:0.008444886998439642,10:0.024718735007175585)32:0.02537092798802157)33:0.035353936201130975,(11:0.06724205110021167,5:0.06724205110021167)28:0.01820154809611646)23:0.01165013013226808,((14:0.02487134237143667,13:0.02487134237143667)37:0.050071657221273026,((19:0.018447004277289104,3:0.018447004277289104)36:0.0471259679888126,17:0.0655729722661017)21:0.009370027326607994)24:0.022150729735886512)22:0.03509015441073195)31:0.08760092307247952,((1:0.07307976637970301,9:0.07307976637970301)34:0.030960676408819138,((2:0.04134790874881871,18:0.04134790874881871)29:0.01874354827742037,(15:0.023269809874592467,7:0.023269809874592467)26:0.03682164715164661)25:0.043948985762283066)35:0.11574436402328553)38:0.0</statenode>
+<statenode id='mutationRate.s:simulated_cognate_data_short'>mutationRate.s:simulated_cognate_data_short[1 1] (0.0,Infinity): 1.0 </statenode>
+<statenode id='frequencies.s:simulated_cognate_data_short'>frequencies.s:simulated_cognate_data_short[2 1] (0.0,1.0): 0.8152814828704488 0.18471851712954937 </statenode>
+<statenode id='bcov_s.s:simulated_cognate_data_short'>bcov_s.s:simulated_cognate_data_short[1 1] (1.0E-4,Infinity): 0.22631107615732132 </statenode>
+</itsabeastystatewerein>
+<!--
+{"operators":[
+{"id":"YuleModelTreeScaler.t:tree","p":0.7107986662725094,"accept":77886,"reject":296253,"acceptFC":77792,"rejectFC":295332,"rejectIv":0,"rejectOp":0},
+{"id":"YuleModelTreeRootScaler.t:tree","p":0.6553003150938778,"accept":83657,"reject":289974,"acceptFC":83513,"rejectFC":289082,"rejectIv":2321,"rejectOp":2321},
+{"id":"YuleModelUniformOperator.t:tree","p":"NaN","accept":1025925,"reject":2713878,"acceptFC":1022945,"rejectFC":2706594,"rejectIv":0,"rejectOp":0},
+{"id":"YuleModelSubtreeSlide.t:tree","p":0.14537966912777173,"accept":75902,"reject":1795349,"acceptFC":75825,"rejectFC":1790240,"rejectIv":764354,"rejectOp":764354},
+{"id":"YuleModelNarrow.t:tree","p":"NaN","accept":48502,"reject":1822219,"acceptFC":48114,"rejectFC":1817489,"rejectIv":0,"rejectOp":0},
+{"id":"YuleModelWide.t:tree","p":"NaN","accept":339,"reject":373040,"acceptFC":333,"rejectFC":372008,"rejectIv":191618,"rejectOp":191618},
+{"id":"YuleModelWilsonBalding.t:tree","p":"NaN","accept":307,"reject":373199,"acceptFC":294,"rejectFC":372174,"rejectIv":66481,"rejectOp":66481},
+{"id":"FixMeanMutationRatesOperator","p":3338.8108407501827,"accept":249566,"reject":0,"acceptFC":248913,"rejectFC":0,"rejectIv":0,"rejectOp":0},
+{"id":"YuleModelBICEPSEpochTop.t:tree","p":0.19486648976600476,"accept":95977,"reject":154302,"acceptFC":95576,"rejectFC":153992,"rejectIv":26244,"rejectOp":26244},
+{"id":"YuleModelBICEPSEpochAll.t:tree","p":0.1938974002933331,"accept":96359,"reject":152462,"acceptFC":95958,"rejectFC":152208,"rejectIv":25859,"rejectOp":25859},
+{"id":"YuleModelBICEPSTreeFlex.t:tree","p":0.08428588160577763,"accept":103500,"reject":146440,"acceptFC":102906,"rejectFC":146356,"rejectIv":0,"rejectOp":0},
+{"id":"frequenciesDelta.s:simulated_cognate_data_short","p":0.0674519596336146,"accept":3611,"reject":8835,"acceptFC":3593,"rejectFC":8819,"rejectIv":0,"rejectOp":0},
+{"id":"bcovSwitchParamScaler.s:simulated_cognate_data_short","p":0.35918699571871926,"accept":3935,"reject":8584,"acceptFC":3921,"rejectFC":8565,"rejectIv":0,"rejectOp":0}
+]}
+-->

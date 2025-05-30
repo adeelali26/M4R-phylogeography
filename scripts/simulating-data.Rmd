@@ -1,0 +1,210 @@
+library(TreeSim)
+library(ape)
+library(ggrepel)
+library(dplyr)
+
+# function to simulate Brownian motion locations on a tree
+simulate_locations <- function(tree, root_location = c(0, 0), diffusion_rate = 1.0) {
+  n_nodes <- max(tree$edge)  # total number of nodes
+  locations <- matrix(NA, nrow = n_nodes, ncol = 2)  # x and y coordinates
+  rownames(locations) <- as.character(1:n_nodes)
+
+  # assign root location
+  root_node <- n_taxa + 1
+  locations[as.character(root_node), ] <- root_location
+
+  # traverse edges and simulate movement
+  for (i in 1:nrow(tree$edge)) {
+    parent <- tree$edge[i, 1]
+    child <- tree$edge[i, 2]
+    branch_length <- tree$edge.length[i]
+
+    sd_step <- sqrt(diffusion_rate * branch_length)
+
+    parent_loc <- locations[as.character(parent), ]
+    child_loc <- rnorm(2, mean = parent_loc, sd = sd_step)
+
+    locations[as.character(child), ] <- child_loc
+  }
+
+  return(locations)
+}
+
+# function to create the transition rate matrix (that satisfies detailed balance) for binary covarion model
+make_covQ <- function(s, alpha) {
+  f0 <- 0.95
+  f1 <- 0.05
+  Q <- matrix(0, 4, 4)
+  rownames(Q) <- colnames(Q) <- c("F0", "F1", "S0", "S1")
+  
+  Q[1, 2] <- f1 * fast_rate   
+  Q[1, 3] <- f0 * s          
+  Q[2, 1] <- f0 * fast_rate  
+  Q[2, 4] <- f1 * s           
+  
+  Q[3, 1] <- f0 * s          
+  Q[3, 4] <- f1 * alpha       
+  Q[4, 2] <- f1 * s           
+  Q[4, 3] <- f0 * alpha       
+  
+  # multiply by f0, f1 for detailed balance
+  diag(Q) <- -rowSums(Q)
+  return(Q)
+}
+
+# simulate a CTMC path based on a transition rate matrix Q
+simulate_path <- function(Q, t_total, start_state) {
+  path <- start_state
+  state <- start_state
+  t <- 0
+  
+  while (t < t_total) {
+    rate <- -Q[state, state]
+    if (rate == 0) break
+    dt <- rexp(1, rate)
+    if (t + dt > t_total) break
+    probs <- Q[state, ]
+    probs[state] <- 0
+    next_state <- sample(1:4, 1, prob = probs)
+    state <- next_state
+    path <- c(path, state)
+    t <- t + dt
+  }
+  
+  return(path)
+}
+
+# simulate all cognate data over a tree given a transition rate matrix Q
+simulate_cov_cognate <- function(tree, Q) {
+  n_nodes <- max(tree$edge)
+  states <- rep(NA, n_nodes)
+
+  root_node <- n_taxa + 1
+  states[root_node] <- sample(1:4, 1)  # Randomly select F0, F1, S0, or S1
+
+  for (i in 1:nrow(tree$edge)) {
+    parent <- tree$edge[i, 1]
+    child  <- tree$edge[i, 2]
+    t <- tree$edge.length[i]
+    
+    parent_state <- states[parent]
+    path <- simulate_path(Q, t, parent_state)
+    states[child] <- tail(path, 1)
+  }
+
+  # extract binary cognate value (0 or 1) from final state
+  final_binary <- c(0, 1, 0, 1)
+  return(final_binary[states[1:n_taxa]])
+}
+
+# write simulated cognate data to a NEXUS file
+write_nexus_cognates <- function(cognate_matrix, file_path) {
+  taxa <- rownames(cognate_matrix)
+  n_taxa <- length(taxa)
+  n_chars <- ncol(cognate_matrix)
+  
+  nexus_lines <- c(
+    "#NEXUS",
+    "Begin data;",
+    paste0("Dimensions ntax=", n_taxa, " nchar=", n_chars, ";"),
+    "Format datatype=standard symbols=\"01\" gap=- missing=?;",
+    "Matrix"
+  )
+  
+  for (i in 1:n_taxa) {
+    line <- paste0(taxa[i], "    ", paste(cognate_matrix[i, ], collapse = ""))
+    nexus_lines <- c(nexus_lines, line)
+  }
+  
+  nexus_lines <- c(nexus_lines, ";", "End;")
+  writeLines(nexus_lines, file_path)
+}
+
+# SIMULATING THE YULE TREE
+set.seed(26)
+
+# parameters and simulation
+n_taxa <- 20
+lambda <- 1.0
+mu <- 0.0
+tree <- sim.bd.taxa(n = n_taxa, numbsim = 1, lambda = lambda, mu = mu)[[1]]
+
+# relabel tips A-T
+tree$tip.label <- LETTERS[1:n_taxa]
+
+par(mar = c(5, 1, 2, 1))
+plot(tree,
+     type = "phylogram",
+     direction = "rightwards",
+     show.tip.label = TRUE,
+     cex = 0.8,
+     no.margin = FALSE)
+axisPhylo(backward = TRUE)
+title("Simulated Yule Tree with Time Axis")
+
+write.tree(tree, file="../simulated_data/simulated_tree.nwk")
+
+# SIMULATE SPATIAL EVOLUTION ON TREE (Brownian motion)
+diffusion_rate <- 1.0  
+locations <- simulate_locations(tree, root_location = c(0, 0), diffusion_rate)
+
+# extract tip coordinates
+tip_coords <- locations[as.character(1:n_taxa), ]
+rownames(tip_coords) <- tree$tip.label
+
+# convert locations to a data frame
+loc_df <- as.data.frame(locations)
+colnames(loc_df) <- c("x", "y")
+loc_df$node <- as.numeric(rownames(loc_df))
+loc_df$label <- NA
+loc_df$label[1:n_taxa] <- tree$tip.label
+
+# build edge list with coordinates
+edge_df <- as.data.frame(tree$edge)
+colnames(edge_df) <- c("parent", "child")
+edge_df <- edge_df %>%
+  mutate(x_start = loc_df$x[parent],
+         y_start = loc_df$y[parent],
+         x_end   = loc_df$x[child],
+         y_end   = loc_df$y[child])
+
+# plot spatial evolution 
+ggplot() +
+  geom_segment(data = edge_df,
+               aes(x = x_start, y = y_start, xend = x_end, yend = y_end),
+               color = "gray40") +
+  geom_point(data = loc_df[1:n_taxa, ], aes(x = x, y = y), color = "blue", size = 2) +
+  geom_text_repel(data = loc_df[1:n_taxa, ],
+                  aes(x = x, y = y, label = label),
+                  size = 3, color = "black") +
+  geom_point(aes(x = 0, y = 0), color = "red", size = 3) +
+  coord_equal() +
+  labs(title = "Simulated Spatial Evolution of Languages",
+       x = "x", y = "y") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold"))
+  
+# SIMULATING COGNATE DATA USING A BINARY COVARION PROCESS
+n_cognates <- 1000
+switch_rate <- 0.5  # slow-fast rate
+alpha <- 0.1  # transition rate between slow 0 and slow 1
+fast_rate <- 1.0  # fixed transition rate between fast 0 and fast 1
+Q <- make_covQ(s = switch_rate, alpha = alpha)
+
+set.seed(26)
+cognate_matrix <- replicate(n_cognates, simulate_cov_cognate(tree, Q))
+rownames(cognate_matrix) <- tree$tip.label
+colnames(cognate_matrix) <- paste0("cog", 1:n_cognates)
+
+# save simulated cognates to NEXUS file and locations to TSV files
+write_nexus_cognates(cognate_matrix, "../simulated-data/simulated_cognate_data.nex")
+
+latitude_df <- data.frame(Language = tree$tip.label,
+                          Latitude = tip_coords[, 2])
+write.table(latitude_df, "../simulated-data/simulated_latitudes.dat", sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+
+longitude_df <- data.frame(Language = tree$tip.label,
+                           Longitude = tip_coords[, 1])
+write.table(longitude_df, "../simulated-data/simulated_longitudes.dat", sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
