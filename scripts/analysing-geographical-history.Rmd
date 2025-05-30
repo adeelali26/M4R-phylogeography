@@ -1,0 +1,206 @@
+library(xml2)
+library(ape)
+library(phytools)
+library(TreeDist)
+library(ggplot2)
+library(ggpubr)
+library(sf)             
+library(rnaturalearth)  
+library(dplyr) 
+library(XML)  
+library(treeio)
+library(purrr)
+library(stringr)
+library(maps)
+library(phangorn)
+library(ggrepel)
+library(akima)    n
+library(scales)     
+
+# extract root location from a single tree
+extract_root_location <- function(tree) {
+  tryCatch({
+    phy <- tree@phylo
+    all_nodes <- unique(as.vector(phy$edge))
+    child_nodes <- phy$edge[, 2]
+    root_node_id <- setdiff(all_nodes, child_nodes)
+    
+    if (length(root_node_id) != 1) {
+      return(tibble(latitude = NA_real_, longitude = NA_real_))
+    }
+    
+    df <- as_tibble(tree)
+    root_row <- filter(df, node == root_node_id)
+    coords <- unlist(root_row$locationsgeo)
+    
+    if (length(coords) == 2) {
+      return(tibble(latitude = coords[1], longitude = coords[2]))
+    } else {
+      return(tibble(latitude = NA_real_, longitude = NA_real_))
+    }
+  }, error = function(e) {
+    return(tibble(latitude = NA_real_, longitude = NA_real_))
+  })
+}
+
+# given a tree, extract inferred migration path for a language (target)
+get_lineage_for_tip <- function(target, tree) {
+  phy <- tree@phylo
+  df <- as_tibble(tree)
+  
+  tip_node <- which(phy$tip.label == target)
+  anc_nodes <- nodepath(phy, tip_node)
+  tip_index <- which(phy$tip.label == target)
+  nodes_path <- anc_nodes[[tip_index]]
+  
+  df %>%
+    filter(node %in% nodes_path) %>%
+    mutate(order = match(node, nodes_path)) %>%
+    arrange(order) %>%
+    mutate(
+      tip = target,
+      lat = map_dbl(locationsgeo, 1),
+      lon = map_dbl(locationsgeo, 2)
+    )
+}
+
+MCC_tree <- read.nexus("../trees/pama-nyungan-first-30-MCC.tree")
+MCC_tree_GEO <- read.nexus("../trees/pama-nyungan-first-30-GEO-MCC.tree")
+
+# read all posterior trees and remove burnin (70%)
+posterior_trees_GEO <- read.beast("../beast/pama-nyungan-first-30-GEO.trees")
+tree_names <- names(posterior_trees_GEO)
+burnin <- floor(0.7 * length(tree_names))
+tree_names_postburnin <- tree_names[(burnin + 1):length(tree_names)]
+
+# extract root locations from all trees after burnin, name columns and return mean
+root_coords <- map_dfr(tree_names_postburnin, function(nm) extract_root_location(trees[[nm]]))
+colnames(root_coords) <- c("latitude", "longitude")
+mean_root <- colMeans(root_coords, na.rm = TRUE)
+
+cat("Posterior mean root location:\n")
+cat("Latitude: ", mean_root["latitude"], "\n")
+cat("Longitude:", mean_root["longitude"], "\n")
+
+# plot root locations on a map of Australia
+australia_map <- map_data("world", region = "Australia")
+
+ggplot() +
+  geom_polygon(data = australia_map, aes(x = long, y = lat, group = group),
+               fill = "lightgray", color = "black") +
+  geom_point(data = root_coords, aes(x = longitude, y = latitude),
+             color = "blue", alpha = 0.1, size = 2) +
+  geom_point(aes(x = mean_root["longitude"], y = mean_root["latitude"]),
+             color = "red", size = 3) +
+  coord_fixed(xlim = c(110, 155), ylim = c(-45, -10)) +
+  labs(title = "Posterior Root Location Estimates",
+       x = "Longitude", y = "Latitude") +
+  theme_minimal() + 
+  theme(
+    panel.grid = element_blank(),
+    axis.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold"),
+  )
+
+
+# extract phylogenies from trees and match MCC to a posterior sample to get the correct annotations
+phylo_list <- purrr::map(posterior_trees_GEO, ~ .x@phylo)
+class(phylo_list) <- "multiPhylo"
+matching_index <- which(purrr::map_lgl(phylo_list, ~ isTRUE(all.equal.phylo(.x, MCC_tree_GEO, use.edge.length = FALSE))))
+MCC <- posterior_trees_GEO[[matching_index[3]]]  # MCC now annotated
+
+# get lineages for ALL tips and plot these
+tip_labels <- MCC@phylo$tip.label
+all_lineages <- map_dfr(tip_labels, ~ get_lineage_for_tip(.x, MCC))
+
+australia_map <- map_data("world", region = "Australia")
+ggplot() +
+  geom_polygon(data = australia_map, aes(x = long, y = lat, group = group),
+               fill = "gray95", color = "black") +
+  geom_path(data = all_lineages, aes(x = lon, y = lat, group = tip),
+            color = "steelblue", linewidth = 0.9, alpha = 0.5) +
+  geom_point(data = all_lineages %>% group_by(tip) %>% slice_head(n = 1),
+             aes(x = lon, y = lat), color = "red", size = 1.5) +
+  geom_point(data = all_lineages %>% group_by(tip) %>% slice_tail(n = 1),
+             aes(x = lon, y = lat), color = "black", size = 1.5) +
+  coord_fixed(xlim = c(110, 155), ylim = c(-45, -10)) +
+  labs(
+    title = "Inferred Migration Paths of the Subset of 30 Languages",
+    x = "Longitude", y = "Latitude"
+  ) +
+  geom_text_repel(data = all_lineages %>% group_by(tip) %>% slice_tail(n = 1),
+                  aes(x = lon, y = lat, label = tip),
+                  size = 3, max.overlaps = 100, box.padding = 0.3) +
+  theme_minimal() + 
+  theme(
+    panel.grid = element_blank(),
+    axis.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold"),
+  )
+
+# an attempt at using Kriging to reconstruct Figure 3 from the paper
+phy <- MCC@phylo
+df <- as_tibble(MCC)
+
+# add latitude, longitude and time to the dataframe representing the tree
+df <- df %>%
+  mutate(
+    lat = map_dbl(locationsgeo, 1),
+    lon = map_dbl(locationsgeo, 2),
+  )
+
+node_heights <- node.depth.edgelength(tree@phylo)
+df <- df %>%
+  mutate(age = max(node_heights) - node_heights[node])
+
+# interpolate surface (using Kriging) for background shading
+interp_data <- with(df, interp(
+  x = lon, y = lat, z = age,
+  duplicate = "mean", linear = TRUE,
+  nx = 200, ny = 200
+))
+
+interp_df <- as.data.frame(expand.grid(x = interp_data$x, y = interp_data$y))
+interp_df$z <- as.vector(interp_data$z)
+
+# build edges from parent -> child migration
+edges <- as.data.frame(phy$edge)
+colnames(edges) <- c("parent", "child")
+
+edges <- edges %>%
+  left_join(df, by = c("parent" = "node")) %>%
+  rename(lat_start = lat, lon_start = lon, age_start = age) %>%
+  left_join(df, by = c("child" = "node")) %>%
+  rename(lat_end = lat, lon_end = lon, age_end = age)
+
+ggplot() +
+  geom_raster(data = interp_df, aes(x = x, y = y, fill = z)) +
+  scale_fill_gradientn(colors = c("white", "blue", "black"),
+                       name = "Age (years BP)",
+                       limits = c(0, 7000),
+                       oob = squish,
+                       na.value = "white") +
+  geom_polygon(data = aus_map, aes(x = long, y = lat, group = group),
+               fill = NA, color = "grey40") +
+  geom_segment(data = edges,
+               aes(x = lon_start, y = lat_start, xend = lon_end, yend = lat_end),
+               arrow = arrow(length = unit(0.12, "cm")),
+               color = "yellow", linewidth = 1.2) +
+  geom_point(data = df, aes(x = lon, y = lat), color = "black", fill = "white", shape = 21, size = 4) +
+  coord_fixed(xlim = c(110, 155), ylim = c(-45, -10)) +
+  theme_minimal(base_size = 14) +
+  labs(
+    title = "Inferred Migration Pathways for the Subset of 30 Languages ",
+    x = "Longitude", y = "Latitude"
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(face = "bold"),
+    axis.title = element_text(face = "bold"),
+    legend.position = "right"
+  )
+
+
+
+
+

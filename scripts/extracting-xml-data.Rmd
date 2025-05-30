@@ -1,0 +1,206 @@
+library(xml2)
+library(ape)
+
+# extract first n taxa from XML and convert into NEXUS format for BEAUti and return taxa names
+xml_to_nex_first_n <- function(xml_file, nex_file, n = 20) {
+  # parse XML
+  doc <- read_xml(xml_file)     
+  
+  # find data block with id "pny2016"
+  data_block <- xml_find_first(doc, './/data[@id="pny2016"]')
+  if (is.na(data_block)) {
+    message("No data block found with id='pny2016'. Check the XML structure.")
+    return()
+  }
+  
+  # extract the first n sequences
+  sequences <- list()
+  sequence_nodes <- xml_find_all(data_block, ".//sequence")
+  taxa_names <- c()
+  for (i in seq_len(min(length(sequence_nodes), n))) {
+    sequence_node <- sequence_nodes[i]
+    taxon <- xml_attr(sequence_node, "taxon")
+    value <- xml_attr(sequence_node, "value")
+    if (!is.na(taxon) && !is.na(value)) {
+      sequences[[taxon]] <- value
+      taxa_names <- c(taxa_names, taxon)
+    }
+  }
+  
+  if (length(sequences) == 0) {
+    message("No sequences found in the specified data block.")
+    return()
+  }
+  
+  # prepare NEXUS file content
+  ntax <- length(sequences)
+  nchar <- nchar(sequences[[1]])
+  nexus_content <- "#NEXUS\n\nBEGIN DATA;\n"
+  nexus_content <- paste0(nexus_content, "  DIMENSIONS NTAX=", ntax, " NCHAR=", nchar, ";\n")
+  nexus_content <- paste0(nexus_content, '  FORMAT DATATYPE=STANDARD MISSING=? GAP=-  SYMBOLS="01";\n')
+  nexus_content <- paste0(nexus_content, "  MATRIX\n")
+  
+  # add sequences
+  for (taxon in names(sequences)) {
+    nexus_content <- paste0(nexus_content, sprintf("%-20s %s\n", taxon, sequences[[taxon]]))
+  }
+  nexus_content <- paste0(nexus_content, ";\nEND;")
+  
+  # write to NEXUS file
+  writeLines(nexus_content, nex_file)
+  message("First ", n, " sequences successfully converted to NEXUS format and saved in ", nex_file, ".")
+  return(taxa_names)
+}
+
+# extract latitude and longitude data as TSV for BEAUti 
+xml_to_tsv_for_taxa <- function(xml_file, taxa_list, tsv_file1, tsv_file2) {
+  # parse XML file
+  doc <- read_xml(xml_file)
+
+  # find the distribution block with location data
+  distribution_block <- xml_find_first(doc, './/distribution[@id="geolikelihood"]')
+  latitude_data <- list()
+  longitude_data <- list()
+  
+  if (!is.na(distribution_block)) {
+    location_lines <- xml_text(distribution_block)
+    location_lines <- strsplit(location_lines, ",")[[1]]
+    for (line in location_lines) {
+      line <- trimws(line)
+      if (grepl("=", line)) {
+        parts <- strsplit(line, "=")[[1]]
+        taxon <- trimws(parts[1])
+        coords <- strsplit(trimws(parts[2]), " ")[[1]]  # split into lat and long
+        latitude <- coords[1]  # Extract latitude and longitude
+        latitude_data[[taxon]] <- latitude
+        longitude <- coords[2]  # Extract longitude
+        longitude_data[[taxon]] <- longitude
+      }
+    }
+  }
+
+  # filter only the taxa in the given list
+  latitude_data <- latitude_data[names(location_data) %in% taxa_list]
+  longitude_data <- longitude_data[names(location_data) %in% taxa_list]
+  
+  # check if any data was found
+  if (length(latitude_data) == 0) {
+    message("No matching location data found for the given taxa.")
+    return()
+  }
+  
+  # write to TSV files
+  lat_lines <- c()
+  long_lines <- c()
+  for (taxon in taxa_list) {
+    if (!is.null(latitude_data[[taxon]])) {
+      lat_lines <- c(lat_lines, paste0(taxon, "\t", latitude_data[[taxon]]))
+    }
+    if (!is.null(longitude_data[[taxon]])) {
+      long_lines <- c(long_lines, paste0(taxon, "\t", longitude_data[[taxon]]))
+    }
+  }
+  
+  writeLines(lat_lines, tsv_file1)
+  message("Latitude data successfully saved to ", tsv_file1)
+
+  writeLines(long_lines, tsv_file2)
+  message("Longitude data successfully saved to ", tsv_file2)
+}
+
+# extract n random taxa from XML and convert into NEXUS format for BEAUti and return taxa names
+xml_to_nex_random_n <- function(xml_file, nex_file, n = 20) {
+  # parse XML file
+  doc <- read_xml(xml_file)
+  
+  # find data block with id "pny2016"
+  data_block <- xml_find_first(doc, './/data[@id="pny2016"]')
+  
+  if (is.na(data_block)) {
+    message("No data block found with id='pny2016'. Check the XML structure.")
+    return()
+  }
+  
+  # extract all sequences
+  sequence_nodes <- xml_find_all(data_block, ".//sequence")
+  all_sequences <- list()
+  for (sequence_node in sequence_nodes) {
+    taxon <- xml_attr(sequence_node, "taxon")
+    value <- xml_attr(sequence_node, "value")
+    if (!is.na(taxon) && !is.na(value)) {
+      all_sequences[[taxon]] <- value
+    }
+  }
+  
+  if (length(all_sequences) == 0) {
+    message("No sequences found in the specified data block.")
+    return()
+  }
+  
+  # randomly select n sequences
+  random_taxa <- sample(names(all_sequences), size = min(n, length(all_sequences)))
+  random_sequences <- all_sequences[random_taxa]
+  
+  # prepare NEXUS file content
+  ntax <- length(random_sequences)
+  nchar <- nchar(random_sequences[[1]])
+  nexus_content <- "#NEXUS\n\nBEGIN DATA;\n"
+  nexus_content <- paste0(nexus_content, "  DIMENSIONS NTAX=", ntax, " NCHAR=", nchar, ";\n")
+  nexus_content <- paste0(nexus_content, '  FORMAT DATATYPE=STANDARD MISSING=? GAP=-  SYMBOLS="01";\n')
+  nexus_content <- paste0(nexus_content, "  MATRIX\n")
+  
+  # add sequences
+  for (taxon in names(random_sequences)) {
+    nexus_content <- paste0(nexus_content, sprintf("%-20s %s\n", taxon, random_sequences[[taxon]]))
+  }
+  
+  nexus_content <- paste0(nexus_content, ";\nEND;")
+  
+  # write to NEXUS file
+  writeLines(nexus_content, nex_file)
+  message(n, " random sequences successfully converted to NEXUS format and saved in ", nex_file, ".")
+  return(names(random_sequences))  # return the randomly selected taxa names
+}
+
+# iterate through each family in MRCA priors and find relevant ones for our subset A
+print_families_subset <- function(A, MRCA_priors) {
+  for(family in names(MRCA_priors)) {
+    # get the taxa in the current family
+    taxa_in_family <- MRCA_priors[[family]]
+    
+    # find the intersection of taxa in the family and taxa in subset A
+    taxa_in_subset <- intersect(taxa_in_family, A)
+    
+    # if there are any taxa in the subset for this family, print the family name and the taxa
+    if(length(taxa_in_subset) > 0) {
+      cat("Family:", family, "\n")
+      cat("Taxa in the family that are in the subset:", paste(taxa_in_subset, collapse = ", "), "\n\n")
+    }
+  }
+}
+
+# function to reduce trees to a subset of taxa
+reduce_tree <- function(tree, taxa){
+  starting_tree <- read.tree(tree)
+  starting_tree_reduced <- keep.tip(starting_tree, tip=taxa)
+  return(starting_tree_reduced)
+}
+
+
+# PRODUCING SUBSET DATA
+taxa <- xml_to_nex_first_n("../pama-nyungan-data/pama-nyungan.xml", "../beast/pama-nyungan-first-30.nex", 30)
+xml_to_tsv_for_taxa("../pama-nyungan-data/pama-nyungan.xml", taxa, "../beast/latitude-first-30.dat", "../beast/longitude-first-30.dat")
+
+random_taxa <- xml_to_nex_random_n("pama-nyungan.xml", "pama-nyungan-random-30.nex", 30)
+
+source("../pama-nyungan-data/mrca_priors.R")
+print_families_subset(taxa, MRCA_priors)
+
+# reduce initial tree
+starting_tree_reduced <- create_reduced_initial("../pama-nyungan-data/initial-newick.txt", taxa)
+write.tree(starting_tree_reduced, file="../beast/starting_tree_reduced_30.txt")
+
+# reduce MCC tree
+MCC_tree_reduced <- reduce_tree("../pama-nyungan-data/pama-nyungan-MCC-tree.txt", taxa)
+write.tree(MCC_tree-reduced, file="../pama-nyungan-data/pama-nyungan-MCC-reduced-30.tree")
+
