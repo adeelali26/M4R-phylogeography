@@ -1,0 +1,27 @@
+<itsabeastystatewerein version='2.0' sample='10000000'>
+<statenode id='Tree.t:tree'>(((9:1.0314158745900288,1:1.0314158745900288)37:0.5272628236943917,((18:0.5712275358944144,2:0.5712275358944144)36:0.07252865934739294,(15:0.1519509283253194,7:0.1519509283253194)21:0.49180526691648796)35:0.9149225030426131)30:0.8768001136388217,(((12:0.7338830068617306,4:0.7338830068617306)25:0.009961825816684033,8:0.7438448326784146)33:0.5297674482667742,(((((16:0.2021639748108661,10:0.2021639748108661)23:0.07025977752889748,6:0.27242375233976357)26:0.2795252490774939,0:0.5519490014172574)31:0.29031781675199964,(11:0.6782167063971817,5:0.6782167063971817)28:0.1640501117720754)34:0.2821463888576249,((14:0.2897122884686167,13:0.2897122884686167)22:0.5748774163641408,((19:0.142482467518258,3:0.142482467518258)27:0.31497921281230634,17:0.45746168033056434)29:0.4071280245021932)32:0.2598235021941244)20:0.1491990739183069)24:1.1618665309780534)38:0.0</statenode>
+<statenode id='mutationRate.s:simulated_cognate_data'>mutationRate.s:simulated_cognate_data[1 1] (0.0,Infinity): 1.0 </statenode>
+<statenode id='bcov_alpha.s:simulated_cognate_data'>bcov_alpha.s:simulated_cognate_data[1 1] (1.0E-4,1.0): 0.16216640533178026 </statenode>
+<statenode id='bcov_s.s:simulated_cognate_data'>bcov_s.s:simulated_cognate_data[1 1] (1.0E-4,Infinity): 6.354409633764572E-4 </statenode>
+<statenode id='frequencies.s:simulated_cognate_data'>frequencies.s:simulated_cognate_data[2 1] (0.0,1.0): 0.9527981578110909 0.047201842188907876 </statenode>
+<statenode id='birthRate.t:tree'>birthRate.t:tree[1 1] (-Infinity,Infinity): 1.0023146448264568 </statenode>
+</itsabeastystatewerein>
+<!--
+{"operators":[
+{"id":"bcovAlphaScaler.s:simulated_cognate_data","p":0.35910849701249203,"accept":2900,"reject":9102,"acceptFC":2881,"rejectFC":9093,"rejectIv":0,"rejectOp":0},
+{"id":"bcovSwitchParamScaler.s:simulated_cognate_data","p":0.21544536425077207,"accept":4174,"reject":7787,"acceptFC":4160,"rejectFC":7781,"rejectIv":175,"rejectOp":175},
+{"id":"frequenciesDelta.s:simulated_cognate_data","p":0.02463106731614691,"accept":3031,"reject":8801,"acceptFC":3008,"rejectFC":8792,"rejectIv":0,"rejectOp":0},
+{"id":"YuleModelTreeScaler.t:tree","p":0.5897352579858376,"accept":78741,"reject":281695,"acceptFC":78603,"rejectFC":280912,"rejectIv":0,"rejectOp":0},
+{"id":"YuleModelTreeRootScaler.t:tree","p":0.4824126848676828,"accept":81632,"reject":279568,"acceptFC":81442,"rejectFC":278825,"rejectIv":34570,"rejectOp":34570},
+{"id":"YuleModelUniformOperator.t:tree","p":"NaN","accept":1335185,"reject":2264330,"acceptFC":1331680,"rejectFC":2258585,"rejectIv":0,"rejectOp":0},
+{"id":"YuleModelSubtreeSlide.t:tree","p":0.8786957100970624,"accept":247450,"reject":1555092,"acceptFC":246745,"rejectFC":1551135,"rejectIv":567549,"rejectOp":567549},
+{"id":"YuleModelNarrow.t:tree","p":"NaN","accept":332660,"reject":1467464,"acceptFC":331608,"rejectFC":1463976,"rejectIv":0,"rejectOp":0},
+{"id":"YuleModelWide.t:tree","p":"NaN","accept":2331,"reject":357786,"acceptFC":2320,"rejectFC":356866,"rejectIv":185198,"rejectOp":185198},
+{"id":"YuleModelWilsonBalding.t:tree","p":"NaN","accept":2063,"reject":357871,"acceptFC":2048,"rejectFC":356960,"rejectIv":63318,"rejectOp":63318},
+{"id":"FixMeanMutationRatesOperator","p":3248.978259325387,"accept":239879,"reject":0,"acceptFC":239297,"rejectFC":0,"rejectIv":0,"rejectOp":0},
+{"id":"YuleModelBICEPSEpochTop.t:tree","p":0.31124545096656014,"accept":88334,"reject":151585,"acceptFC":87885,"rejectFC":151397,"rejectIv":25400,"rejectOp":25400},
+{"id":"YuleModelBICEPSEpochAll.t:tree","p":0.3048285000123578,"accept":90771,"reject":149246,"acceptFC":90362,"rejectFC":149029,"rejectIv":25289,"rejectOp":25289},
+{"id":"YuleModelBICEPSTreeFlex.t:tree","p":0.13847716465130558,"accept":101234,"reject":139230,"acceptFC":100633,"rejectFC":139196,"rejectIv":0,"rejectOp":0},
+{"id":"YuleBirthRateScaler.t:tree","p":0.3205021262213149,"accept":94382,"reject":265677,"acceptFC":93689,"rejectFC":265446,"rejectIv":0,"rejectOp":0}
+]}
+-->

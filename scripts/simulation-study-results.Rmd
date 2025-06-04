@@ -1,0 +1,159 @@
+library(xml2)
+library(ape)
+library(phytools)
+library(TreeDist)
+library(ggplot2)
+library(ggpubr)
+library(sf)             
+library(rnaturalearth)  
+library(dplyr) 
+library(XML)  
+library(treeio)
+library(purrr)
+library(stringr)
+library(maps)
+library(phangorn)
+library(ggrepel)
+library(akima)    
+library(scales)    
+
+# import set of trees and remove burnin
+import_burnin <- function(file_path, burnin = 0.1) {
+  # read NEXUS tree file
+  trees <- read.nexus(file_path)
+  
+  # compute burn-in count
+  burnin_n <- floor(length(trees) * burnin)
+  
+  # return post-burnin trees
+  trees[(burnin_n + 1):length(trees)]
+}
+
+# compute root ages from a set of trees
+compute_root_ages <- function(trees) {
+  ages <- sapply(trees, function(tree) {
+    max(node.depth.edgelength(tree))
+  })
+  return(ages)
+}
+
+# plot histogram of root ages for two sets of trees
+plot_root_age_histograms <- function(trees1, trees2, true_tree) {
+  # compute root ages for posterior trees
+  ages1 <- compute_root_ages(trees1)
+  ages2 <- compute_root_ages(trees2)
+
+  # compute root age of the true tree
+  true_age <- max(node.depth.edgelength(true_tree))
+
+  # prepare data for plotting
+  df1 <- data.frame(Age = ages1, Source = "Trees sampled without geographic data")
+  df2 <- data.frame(Age = ages2, Source = "Trees sampled with geographic data")
+  df <- rbind(df1, df2)
+
+  # create the histogram plot
+  p <- ggplot(df, aes(x = Age, fill = Source)) +
+    geom_histogram(bins = 30, alpha = 0.7, color = "white", position = "identity") +
+    geom_vline(xintercept = true_age, color = "black", linetype = "dashed", size = 1) +
+    facet_wrap(~Source, ncol = 1, strip.position = "top") +
+    scale_fill_manual(values = c("blue", "red")) +
+    labs(
+      title = "Root Age Distribution Across Posterior Samples",
+      x = "Root Age",
+      y = "Frequency"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
+      axis.title = element_text(face = "bold"),
+      strip.text = element_text(face = "bold", size = 13),
+      panel.spacing = unit(1, "lines"),
+      legend.position = "none"
+    ) +
+    xlim(0, 7)
+
+  print(p)
+}
+
+# compute MRCA age of 3 nodes
+compute_mrca_ages_3 <- function(trees, node1, node2, node3) {
+  ages <- sapply(trees, function(tree) {
+    mrca_node <- getMRCA(tree, c(node1, node2, node3))
+    if (is.na(mrca_node)) {
+      return(NA)  # skip if any taxa are missing
+    }
+    max(node.depth.edgelength(tree)) - node.depth.edgelength(tree)[mrca_node]
+  })
+  return(na.omit(ages))
+}
+
+# compute MRCA age histograms of two sets of trees
+plot_mrca_histograms_3 <- function(trees1, trees2, true_tree, node1, node2, node3) {
+  # compute MRCA ages from both sets of posterior trees
+  ages1 <- compute_mrca_ages_3(trees1, node1, node2, node3)
+  ages2 <- compute_mrca_ages_3(trees2, node1, node2, node3)
+  
+  # compute the true MRCA age
+  true_mrca_node <- getMRCA(true_tree, c(node1, node2, node3))
+  true_mrca_age <- max(node.depth.edgelength(true_tree)) - node.depth.edgelength(true_tree)[true_mrca_node]
+  
+  # combine into a single data frame
+  df1 <- data.frame(Age = ages1, Source = "Trees sampled without geographic data")
+  df2 <- data.frame(Age = ages2, Source = "Trees sampled with geographic data")
+  df <- rbind(df1, df2)
+  
+  # plot histogram
+  p <- ggplot(df, aes(x = Age, fill = Source)) +
+    geom_histogram(bins = 30, alpha = 0.7, color = "white", position = "identity") +
+    facet_wrap(~Source, ncol = 1, strip.position = "top") +
+    geom_vline(xintercept = true_mrca_age, linetype = "dashed", color = "black", size = 1) +
+    scale_fill_manual(values = c("blue", "red")) +
+    labs(
+      title = paste("MRCA Age Distribution for", node1, node2, "and", node3),
+      x = "MRCA Age", 
+      y = "Frequency"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      strip.text = element_text(face = "bold", size = 13),
+      plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
+      axis.title = element_text(face = "bold"),
+      legend.position = "none",
+      panel.spacing = unit(1, "lines")
+    ) +
+    xlim(0, 5)
+  
+  print(p)
+}
+
+MCC_tree <- read.nexus("../trees/simulation-study-cogs-MCC.tree")
+MCC_tree_GEO <- read.nexus("../trees/simulation-study-GEO-MCC.tree")
+simulated_tree <- read.tree("../simulated-data/simulated-tree.nwk")
+taxa <- simulated_tree$tip.label
+
+cat("Robinson Foulds distance between the MCC tree and the simulated tree: ", RobinsonFoulds(MCC_tree, simulated_tree))
+cat("Robinson Foulds distance between the MCC tree with geographic data and the simulated tree: ", RobinsonFoulds(MCC_tree_GEO, simulated_tree))
+
+posterior_trees <- import_burnin("../beast/simulation-study-cogs.trees", 0.1)
+posterior_trees_GEO <- import_burnin("../beast/simulation-study-GEO.trees", 0.1)
+
+plot_root_age_histograms(posterior_trees, posterior_trees_GEO, simulated_tree)
+plot_mrca_histograms_3(posterior_trees, posterior_trees_GEO, simulated_tree, "I", "E", "M")
+plot_mrca_histograms_3(posterior_trees, posterior_trees_GEO, simulated_tree, "R", "D", "T")
+plot_mrca_histograms_3(posterior_trees, posterior_trees_GEO, simulated_tree, "B", "C", "H")
+
+MCC_tree_100 <- read.nexus("../trees/simulation-study-cogs-100-MCC.tree")
+MCC_tree_100_GEO <- read.nexus("../trees/simulation-study-GEO-100-MCC.tree")
+
+cat("Robinson Foulds distance between the MCC tree and the simulated tree for 100 cognate traits: ", RobinsonFoulds(MCC_tree_100, simulated_tree))
+cat("Robinson Foulds distance between the MCC tree with geographic data and the simulated tree for 100 cognate traits: ", RobinsonFoulds(MCC_tree_100_GEO, simulated_tree))
+
+posterior_trees_100 <- import_burnin("../beast/simulation-study-cogs-100.trees", 0.1)
+posterior_trees_GEO_100 <- import_burnin("../beast/simulation-study-GEO-100.trees", 0.1)
+
+plot_root_age_histograms(posterior_trees_100, posterior_trees_GEO_100, simulated_tree)
+plot_mrca_histograms_3(posterior_trees_100, posterior_trees_GEO_100, simulated_tree, "I", "E", "M")
+plot_mrca_histograms_3(posterior_trees_100, posterior_trees_GEO_100, simulated_tree, "N", "R", "L")
+plot_mrca_histograms_3(posterior_trees_100, posterior_trees_GEO_100, simulated_tree, "L", "F", "G")
+plot_mrca_histograms_3(posterior_trees_100, posterior_trees_GEO_100, simulated_tree, "P", "C", "H")
+

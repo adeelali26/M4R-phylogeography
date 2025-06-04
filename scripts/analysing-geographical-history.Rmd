@@ -14,8 +14,8 @@ library(stringr)
 library(maps)
 library(phangorn)
 library(ggrepel)
-library(akima)    n
-library(scales)     
+library(akima)    
+library(scales)  
 
 # extract root location from a single tree
 extract_root_location <- function(tree) {

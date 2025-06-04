@@ -8,201 +8,122 @@ library(sf)
 library(rnaturalearth)  
 library(ggplot2)       
 library(dplyr) 
-library(XML)        
+library(XML)   
 
-# function to sample n random points inside Australia's landmass
-sample_australia_land <- function(n) {
-  points <- data.frame()
+# import set of trees and remove burnin
+import_burnin <- function(file_path, burnin = 0.1) {
+  # read NEXUS tree file
+  trees <- read.nexus(file_path)
   
-  while(nrow(points) < n) {
-    # generate more points than needed (buffer for points that may fall outside)
-    latitudes <- runif(n * 3, -44, -10)  # Latitude range
-    longitudes <- runif(n * 3, 112, 154) # Longitude range
-    
-    # convert to an sf object
-    candidate_points <- st_as_sf(data.frame(Latitude = latitudes, Longitude = longitudes), 
-                                 coords = c("Longitude", "Latitude"), 
-                                 crs = st_crs(australia))
-    
-    # keep only points that fall inside Australia's landmass
-    valid_points <- candidate_points[st_within(candidate_points, australia, sparse = FALSE), ]
-    
-    # add to results and keep only n points
-    points <- rbind(points, as.data.frame(st_coordinates(valid_points)))
-    points <- head(points, n)
-  }
-  # rename columns and return
-  colnames(points) <- c("Longitude", "Latitude")
-  return(points)
-}
-
-# function to update locations in the XML file
-update_locations_xml <- function(xml_file, coord_df, new_trace_file, new_tree_file, output_file) {  
-  # load XML
-  doc <- xmlParse(xml_file)
+  # compute burn-in count
+  burnin_n <- floor(length(trees) * burnin)
   
-  # update traitmap coordinates
-  trait_map_node <- getNodeSet(doc, "//traitMap[@id='traitmap.s:geo']")[[1]]
-  
-  if (!is.null(trait_map_node) && length(xmlChildren(trait_map_node)) > 0) {
-    # preserve the parameter node and update trait coordinates
-    param_node <- getNodeSet(trait_map_node, ".//parameter[@id='location.s:geo']")[[1]]
-    trait_text <- xmlValue(trait_map_node)
-    
-    for (i in 1:nrow(coord_df)) {
-      name <- coord_df$Name[i]
-      lat <- coord_df$Latitude[i]
-      lon <- coord_df$Longitude[i]
-      
-      if (grepl(paste0(name, "="), trait_text)) {
-        trait_text <- gsub(
-          paste0(name, "=.*?([,|\n])"), 
-          paste0(name, "=", lat, " ", lon, "\\1"), 
-          trait_text
-        )
-      }
-    }
-    
-    # remove old trait coordinates and add updated ones
-    removeChildren(trait_map_node, kids = xmlChildren(trait_map_node)[grepl("traitName|tree", names(xmlChildren(trait_map_node)))])
-    addChildren(trait_map_node, newXMLTextNode(trait_text))
-    
-    # ensure the parameter node is not removed
-    if (!is.null(param_node)) {
-      # Retain the parameter node
-      addChildren(trait_map_node, param_node)
-    }
-  }
-  
-  # update trace and tree log file names
-  tracelog_node <- getNodeSet(doc, "//logger[@id='tracelog']")[[1]]
-  if (!is.null(tracelog_node)) {
-    xmlAttrs(tracelog_node)["fileName"] <- new_trace_file
-  }
-
-  treelog_node <- getNodeSet(doc, "//logger[@id='treelog.t:tree']")[[1]]
-  if (!is.null(treelog_node)) {
-    xmlAttrs(treelog_node)["fileName"] <- new_tree_file
-  }
-  
-  # save the modified XML without changing any other parts
-  saveXML(doc, file = output_file)
+  # return post-burnin trees
+  trees[(burnin_n + 1):length(trees)]
 }
 
 # function to plot histograms of MRCA ages to compare 3 models for TEST 1
 plot_mrca_histograms_test_1 <- function(trees1, trees2, trees3, node1, node2) {
-  # compute MRCA ages
+  # Compute MRCA ages
   ages1 <- compute_mrca_ages(trees1, node1, node2)
   ages2 <- compute_mrca_ages(trees2, node1, node2)
   ages3 <- compute_mrca_ages(trees3, node1, node2)
-  
-  # convert to data frames for ggplot
-  df1 <- data.frame(Age = ages1, Source = "Trees sampled without geographical data")
-  df2 <- data.frame(Age = ages2, Source = "Trees sampled with geographical data")
-  df3 <- data.frame(Age = ages3, Source = "Trees sampled with random location data")
-  df <- rbind(df1, df2, df3)
-  
-  # create histogram plot
+
+  # prepare data
+  df1 <- data.frame(Age = ages1, Source = "Trees sampled without geographic data")
+  df2 <- data.frame(Age = ages2, Source = "Trees sampled with geographic data")
+  df3 <- data.frame(Age = ages3, Source = "Trees sampled with random geographic data")
+  df <- rbind(df1, df3, df2)
+
+  # create faceted histogram plot
   p <- ggplot(df, aes(x = Age, fill = Source)) +
-    geom_histogram(bins = 30, alpha = 0.6, position = "identity") +
-    facet_wrap(~Source, ncol = 1) +
-    theme_minimal() +
-    xlim(0, 10000) +
-    labs(title = paste("MRCA Age Distribution for", node1, "and", node2),
-         x = "MRCA Age", y = "Count") +
+    geom_histogram(bins = 30, alpha = 0.7, color = "white", position = "identity") +
+    facet_wrap(~Source, ncol = 1, strip.position = "top", scales = "free_y") +
     scale_fill_manual(values = c("blue", "green", "red")) +
-    theme(legend.position="none")
-  
+    labs(
+      title = paste("MRCA Age Distribution for", node1, "and", node2),
+      x = "MRCA Age",
+      y = "Frequency"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
+      axis.title = element_text(face = "bold"),
+      strip.text = element_text(face = "bold", size = 13),
+      panel.spacing = unit(1, "lines"),
+      legend.position = "none"
+    )
+
   print(p)
 }
+
 
 # function to plot histograms of MRCA ages to compate 3 models for TEST 2
 plot_mrca_histograms_test_2 <- function(trees1, trees2, trees3, node1, node2) {
-  # compute MRCA ages
+  library(ggplot2)
+
+  # Compute MRCA ages
   ages1 <- compute_mrca_ages(trees1, node1, node2)
   ages2 <- compute_mrca_ages(trees2, node1, node2)
   ages3 <- compute_mrca_ages(trees3, node1, node2)
-  
-  # convert to data frames for ggplot
-  df1 <- data.frame(Age = ages1, Source = "Trees sampled without geographical data")
-  df2 <- data.frame(Age = ages2, Source = "Trees sampled with geographical data")
-  df3 <- data.frame(Age = ages3, Source = "Trees sampled with wrong geographical data (all the same)")
-  df <- rbind(df1, df2, df3)
-  
-  # create histogram plot
+
+  # Prepare data
+  df1 <- data.frame(Age = ages1, Source = "Trees sampled without geographic data")
+  df2 <- data.frame(Age = ages2, Source = "Trees sampled with geographic data")
+  df3 <- data.frame(Age = ages3, Source = "Trees sampled with all the same geographic data")
+  df <- rbind(df1, df3, df2)  # order for plotting
+
+  # control facet and colour order
+  df$Source <- factor(df$Source, levels = c(
+    "Trees sampled with geographic data",
+    "Trees sampled with all the same geographic data",
+    "Trees sampled without geographic data"
+  ))
+
+  # create plot
   p <- ggplot(df, aes(x = Age, fill = Source)) +
-    geom_histogram(bins = 30, alpha = 0.6, position = "identity") +
-    facet_wrap(~Source, ncol = 1) +
-    theme_minimal() +
-    xlim(0, 10000) +
-    labs(title = paste("MRCA Age Distribution for", node1, "and", node2),
-         x = "MRCA Age", y = "Count") +
+    geom_histogram(bins = 30, alpha = 0.7, color = "white", position = "identity") +
+    facet_wrap(~Source, ncol = 1, strip.position = "top", scales = "free_y") +
     scale_fill_manual(values = c("blue", "green", "red")) +
-    theme(legend.position = "none")
-  
+    labs(
+      title = paste("MRCA Age Distribution for", node1, "and", node2),
+      x = "MRCA Age",
+      y = "Frequency"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
+      axis.title = element_text(face = "bold"),
+      strip.text = element_text(face = "bold", size = 13),
+      panel.spacing = unit(1, "lines"),
+      legend.position = "none"
+    )
+
   print(p)
 }
 
-# get Australia's landmass as an sf object
-australia <- ne_countries(scale = "medium", country = "Australia", returnclass = "sf")
 
-# generate 10 random points on land and convert to an sf object for plotting
-set.seed(42)
-random_land_points <- sample_australia_land(30)
-random_sf <- st_as_sf(random_land_points, coords = c("Longitude", "Latitude"), crs = st_crs(australia))
+burnin <- 0.7
+posterior_trees <- import_burnin("../beast/pama-nyungan-first-30.trees", burnin)
+posterior_trees_GEO <- import_burnin("../beast/pama-nyungan-first-30-GEO.trees", burnin)
+posterior_trees_GEO_test_1 <- import_burnin("../beast/pama-nyungan-first-30-GEO-test-1.trees", 0.7)
+taxa <- posterior_trees[[1]]$tip.label 
 
-ggplot() +
-  geom_sf(data = australia, fill = "lightgray", color = "black") +  # Australia map
-  geom_sf(data = random_sf, color = "red", size = 3) +             # Plot points
-  theme_minimal() +
-  ggtitle("Randomly Sampled Land Points in Australia") +
-  theme(plot.title = element_text(hjust = 0.5))  # Center title
-
-# store random locations in data frame, ready to update XML
-random_locations <- data.frame(
-  Name = taxa,
-  random_land_points
-)
-
-# TEST 1: RANDOM LOCATIONS
-update_locations_xml(
-  "../beast/pama-nyungan-first-30-GEO.xml", random_locations,
-  "../beast/pama-nyungan-first-30-GEO-test-1.log",
-  "../beast/pama-nyungan-first-30-GEO-test-1.trees",
-  "../beast/pama-nyungan-first-30-GEO-test-1.xml"
-)
-
-posterior_trees <- read.nexus("../beast/pama-nyungan-first-30.trees")
-posterior_trees_GEO <- read.nexus("../beast/pama-nyungan-first-30-GEO.trees")
-posterior_trees_GEO_test_1 <- read.nexus("../beast/pama-nyungan-first-30-GEO-test-1.trees")
-taxa <- posterior_trees[[1]]$tip.label
-
-plot_mrca_histograms_test_1(posterior_trees, posterior_trees_GEO, posterior_trees_GEO_test_1, "Bularnu", "Bilinarra")
+plot_mrca_histograms_test_1(posterior_trees, posterior_trees_GEO, posterior_trees_GEO_test_1, "ChampionBay", "Badimaya")  
 plot_mrca_histograms_test_1(posterior_trees, posterior_trees_GEO, posterior_trees_GEO_test_1, "Arabana", "Bilinarra")
-plot_mrca_histograms_test_1(posterior_trees, posterior_trees_GEO, posterior_trees_GEO_test_1, "Alngith", "Ayapathu")
-plot_mrca_histograms_test_1(posterior_trees, posterior_trees_GEO, posterior_trees_GEO_test_1, "Bandjalang", "Coobenpil")
-plot_mrca_histograms_test_1(posterior_trees, posterior_trees_GEO, posterior_trees_GEO_test_1, "Bandjalang", "Dalla")
+plot_mrca_histograms_test_1(posterior_trees, posterior_trees_GEO, posterior_trees_GEO_test_1, "Alngith", "Ayapathu") 
+plot_mrca_histograms_test_1(posterior_trees, posterior_trees_GEO, posterior_trees_GEO_test_1, "Bandjalang", "Balkurra") 
 
-# now forcing all locations to be centre of Australia
-aus_centre <- c(134, -25)
+posterior_trees_GEO_test_2 <- import_burnin("../beast/pama-nyungan-first-30-GEO-test-2.trees", burnin)
 
-same_locations <- data.frame(
-  Name = taxa,
-  Latitude = rep(aus_centre[1], 30),
-  Longitude = rep(aus_centre[2], 30)
-)
+plot_mrca_histograms_test_2(posterior_trees, posterior_trees_GEO, posterior_trees_GEO_test_2, "Coonambella", "Dalla")
+plot_mrca_histograms_test_2(posterior_trees, posterior_trees_GEO, posterior_trees_GEO_test_2, "Colac", "Coobenpil")
+plot_mrca_histograms_test_2(posterior_trees, posterior_trees_GEO, posterior_trees_GEO_test_2, "Barna", "BarrowPoint")
+plot_mrca_histograms_test_2(posterior_trees, posterior_trees_GEO, posterior_trees_GEO_test_2, "Batyala", "Belyando")
+plot_mrca_histograms_test_2(posterior_trees, posterior_trees_GEO, posterior_trees_GEO_test_2, "Alyawarr", "Antekerrepenhe")
+plot_mrca_histograms_test_2(posterior_trees, posterior_trees_GEO, posterior_trees_GEO_test_2, "Bandjalang", "BarrowPoint")
 
-# TEST 2: ALL LOCATIONS AT CENTRE OF AUSTRALIA
-update_locations_xml(
-  "../beast/pama-nyungan-first-30-GEO.xml", same_locations,
-  "../beast/pama-nyungan-first-30-GEO-test-2.log",
-  "../beast/pama-nyungan-first-30-GEO-test-2.trees",
-  "../beast/pama-nyungan-first-30-GEO-test-2.xml"
-)
-
-posterior_trees_GEO_test_2 <- read.nexus("../beast/pama-nyungan-first-30-GEO-test-2.trees")
-
-# plot MRCA histograms for consecutive pairs
+# plot MRCA histograms for some further pairs
 for (i in 1:29){
   plot_mrca_histograms_test_2(posterior_trees, posterior_trees_GEO, posterior_trees_GEO_test_2, taxa[i], taxa[i+1])
 }

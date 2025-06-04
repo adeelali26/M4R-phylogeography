@@ -80,7 +80,7 @@ simulate_cov_cognate <- function(tree, Q) {
   states <- rep(NA, n_nodes)
 
   root_node <- n_taxa + 1
-  states[root_node] <- sample(1:4, 1)  # Randomly select F0, F1, S0, or S1
+  states[root_node] <- sample(1:4, 1, prob = c(0.475, 0.025, 0.475, 0.025))
 
   for (i in 1:nrow(tree$edge)) {
     parent <- tree$edge[i, 1]
@@ -142,7 +142,7 @@ plot(tree,
 axisPhylo(backward = TRUE)
 title("Simulated Yule Tree with Time Axis")
 
-write.tree(tree, file="../simulated_data/simulated_tree.nwk")
+write.tree(tree, file="../simulated_data/simulated-tree.nwk")
 
 # SIMULATE SPATIAL EVOLUTION ON TREE (Brownian motion)
 diffusion_rate <- 1.0  
@@ -201,10 +201,20 @@ write_nexus_cognates(cognate_matrix, "../simulated-data/simulated_cognate_data.n
 
 latitude_df <- data.frame(Language = tree$tip.label,
                           Latitude = tip_coords[, 2])
-write.table(latitude_df, "../simulated-data/simulated_latitudes.dat", sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
+write.table(latitude_df, "../simulated-data/simulated-latitudes.dat", sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
 
 
 longitude_df <- data.frame(Language = tree$tip.label,
                            Longitude = tip_coords[, 1])
-write.table(longitude_df, "../simulated-data/simulated_longitudes.dat", sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
+write.table(longitude_df, "../simulated-data/simulated-longitudes.dat", sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+# shortened cognate sequence
+set.seed(26)
+n_cognates_short <- 100
+cognate_matrix_100 <- replicate(n_cognates_short, simulate_cov_cognate(tree, Q))
+rownames(cognate_matrix_100) <- tree$tip.label
+colnames(cognate_matrix_100) <- paste0("cog", 1:n_cognates_short)
+
+# save simulated cognates to NEXUS file and locations to TSV files
+write_nexus_cognates(cognate_matrix_100, "../simulated-data/simulated-cognate-data-100.nex")
 
