@@ -234,6 +234,10 @@ plot_mrca_sd_scatter <- function(trees1, trees2) {
   sd1 <- sd1[common_pairs]
   sd2 <- sd2[common_pairs]
   
+  # calculate and print percentage of lower SDs in the second set
+  pct_lower <- mean(sd2 < sd1) * 100
+  cat(sprintf("%.1f%% of MRCA nodes have lower SD in the second set of trees (with geo)\n", pct_lower))
+  
   # adjust margins and rotate y-axis label
   old_par <- par(no.readonly = TRUE)  # save current settings
   par(mar = c(4, 5, 3, 1))            
@@ -259,12 +263,19 @@ taxa <- MCC_tree$tip.label
 
 cat("Robinson Foulds distance between my tree and the given tree: ", RobinsonFoulds(MCC_tree, MCC_given))
 cat("Robinson Foulds distance between my trees with and without geography: ", RobinsonFoulds(MCC_tree, MCC_tree_GEO))
+
+plot(cophylo(MCC_tree, MCC_given))
+title("MCC Tree Comparison: Subset Inference vs Full Dataset", line=2.5)
+
 plot_node_ages(MCC_tree, MCC_tree_GEO)
 
 burnin <- 0.7
 posterior_trees <- import_burnin("../beast/pama-nyungan-first-30.trees", burnin)
 posterior_trees_GEO <- import_burnin("../beast/pama-nyungan-first-30-GEO.trees", burnin)
 
+plot_mrca_sd_scatter(posterior_trees, posterior_trees_GEO)
+
+plot_root_age_histograms(posterior_trees, posterior_trees_GEO)
 plot_mrca_histograms(posterior_trees, posterior_trees_GEO, taxa[1], taxa[10])
 plot_mrca_histograms(posterior_trees, posterior_trees_GEO, "Bunganditj", "Colac")
 plot_mrca_histograms(posterior_trees, posterior_trees_GEO, "Awabakal", "Birrpayi")
@@ -276,10 +287,5 @@ for (i in 1:29){
 }
 
 plot_mrca_histograms_if_directly_related(posterior_trees, posterior_trees_GEO, "ChampionBay", "Badimaya")
-
-plot_root_age_histograms(posterior_trees, posterior_trees_GEO)
-
-plot_mrca_sd_scatter(posterior_trees, posterior_trees_GEO)
-
 
 

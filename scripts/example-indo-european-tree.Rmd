@@ -1,0 +1,56 @@
+library(xml2)
+library(ape)
+library(phytools)
+library(TreeDist)
+library(ggplot2)
+library(ggpubr)
+
+subset <- c("Ancient_Greek", "Baluchi", "Belarusian", "Bengali", "Bulgarian", "Catalan", "Czech", "Danish", "Dutch", "English", "Flemish", "French", "German", "Gujarati", "Hindi", "Icelandic", "Irish", "Italian", "Kurdish", "Latin", "Latvian", "Lithuanian", "Luxembourgish", "Modern_Greek", "Nepali", "Norwegian", "Old_English", "Panjabi", "Pashto", "Persian", "Polish", "Portuguese", "Romanian", "Russian", "Scots_Gaelic", "Serbian", "Slovak", "Slovenian", "Spanish", "Swedish", "Swiss_German", "Tajik", "Ukrainian", "Urdu", "Welsh")     
+
+extinct_langs <- c("Ancient_Greek", "Latin")
+
+# reduce tree to subset above
+tree <- read.nexus("../trees/indo-european.tree")
+tree2 <- keep.tip(tree, tip=subset)
+
+# extract clades
+clade1 <- extract.clade(tree2, node = 80)
+clade2 <- extract.clade(tree2, node = 70)
+clade3 <- extract.clade(tree2, node = 67)
+clade4 <- extract.clade(tree2, node = 61)
+clade5 <- extract.clade(tree2, node = 50)
+clade6 <- extract.clade(tree2, node = 47)
+
+# assign colours to clades
+tip_colors <- rep("black", length(tree2$tip.label))
+names(tip_colors) <- tree2$tip.label
+tip_colors[tree2$tip.label %in% clade1$tip.label] <- "steelblue"
+tip_colors[tree2$tip.label %in% clade2$tip.label] <- "darkorange"
+tip_colors[tree2$tip.label %in% clade3$tip.label] <- "forestgreen"
+tip_colors[tree2$tip.label %in% clade4$tip.label] <- "firebrick"
+tip_colors[tree2$tip.label %in% clade5$tip.label] <- "orchid"
+tip_colors[tree2$tip.label %in% clade6$tip.label] <- "goldenrod"
+
+# extinct languages in italic
+label_styles <- ifelse(tree2$tip.label %in% extinct_langs,
+                       yes = 3, 
+                       no = 1)
+
+# Plot the tree
+par(mar = c(2, 1, 1, 1))  # increase bottom margin
+
+plot(tree2,
+     type = "phylogram",
+     direction = "rightwards",
+     tip.color = tip_colors,
+     cex = 0.7,
+     font = label_styles,
+     edge.width = 1.5,
+     label.offset = 0.01
+)
+axisPhylo(backward = TRUE)
+title("Inferred Phylolinguistic Tree of 45 Indo-European Languages")
+ 
+
+
+
