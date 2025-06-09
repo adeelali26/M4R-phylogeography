@@ -1,7 +1,8 @@
 library(TreeSim)
-library(ape)
-library(ggrepel)
-library(dplyr)
+library(ape)           
+library(ggplot2)
+library(ggrepel)     
+library(dplyr)        
 
 # function to simulate Brownian motion locations on a tree
 simulate_locations <- function(tree, root_location = c(0, 0), diffusion_rate = 1.0) {

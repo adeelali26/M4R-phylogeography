@@ -1,9 +1,4 @@
-library(xml2)
 library(ape)
-library(phytools)
-library(TreeDist)
-library(ggplot2)
-library(ggpubr)
 
 subset <- c("Ancient_Greek", "Baluchi", "Belarusian", "Bengali", "Bulgarian", "Catalan", "Czech", "Danish", "Dutch", "English", "Flemish", "French", "German", "Gujarati", "Hindi", "Icelandic", "Irish", "Italian", "Kurdish", "Latin", "Latvian", "Lithuanian", "Luxembourgish", "Modern_Greek", "Nepali", "Norwegian", "Old_English", "Panjabi", "Pashto", "Persian", "Polish", "Portuguese", "Romanian", "Russian", "Scots_Gaelic", "Serbian", "Slovak", "Slovenian", "Spanish", "Swedish", "Swiss_German", "Tajik", "Ukrainian", "Urdu", "Welsh")     
 

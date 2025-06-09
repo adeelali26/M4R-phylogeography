@@ -1,14 +1,8 @@
+library(sf)
+library(rnaturalearth)
 library(xml2)
-library(ape)
-library(phytools)
-library(TreeDist)
+library(XML)
 library(ggplot2)
-library(ggpubr)
-library(sf)             
-library(rnaturalearth)  
-library(ggplot2)       
-library(dplyr) 
-library(XML)       
 
 # function to sample n random points inside Australia's landmass
 sample_australia_land <- function(n) {

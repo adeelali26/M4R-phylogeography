@@ -1,9 +1,9 @@
-library(xml2)
 library(ape)
+library(xml2)
 library(phytools)
 library(TreeDist)
 library(ggplot2)
-library(ggpubr)
+library(grid)
 
 # import set of trees and remove burnin
 import_burnin <- function(file_path, burnin = 0.1) {
@@ -286,8 +286,9 @@ MCC_given <- read.tree("../pama-nyungan-data/pama-nyungan-MCC-reduced-30.tree")
 MCC_tree_GEO <- read.nexus("../trees/pama-nyungan-first-30-GEO-MCC.tree")
 taxa <- MCC_tree$tip.label
 
-cat("Robinson Foulds distance between my tree and the given tree: ", RobinsonFoulds(MCC_tree, MCC_given))
-cat("Robinson Foulds distance between my trees with and without geography: ", RobinsonFoulds(MCC_tree, MCC_tree_GEO))
+cat("Robinson Foulds distance between my MCC tree and the given MCC tree: ", RobinsonFoulds(MCC_tree, MCC_given))
+cat("Clustering Info distance between my MCC tree and the given MCC tree: ", ClusteringInfoDistance(MCC_tree, MCC_given))
+cat("Robinson Foulds distance between my MCC trees with and without geography: ", RobinsonFoulds(MCC_tree, MCC_tree_GEO))
 
 plot(cophylo(MCC_tree, MCC_given))
 title("MCC Tree Comparison: Subset Inference vs Full Dataset", line=2.5)

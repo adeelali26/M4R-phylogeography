@@ -1,21 +1,8 @@
-library(xml2)
 library(ape)
-library(phytools)
 library(TreeDist)
 library(ggplot2)
-library(ggpubr)
-library(sf)             
-library(rnaturalearth)  
-library(dplyr) 
-library(XML)  
-library(treeio)
-library(purrr)
-library(stringr)
-library(maps)
-library(phangorn)
-library(ggrepel)
-library(akima)    
-library(scales)    
+library(grid)
+library(xml2)
 
 # import set of trees and remove burnin
 import_burnin <- function(file_path, burnin = 0.1) {

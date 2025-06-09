@@ -1,14 +1,6 @@
-library(xml2)
-library(ape)
-library(phytools)
-library(TreeDist)
-library(ggplot2)
-library(ggpubr)
-library(sf)             
-library(rnaturalearth)  
-library(ggplot2)       
-library(dplyr) 
-library(XML)   
+library(ape)       
+library(ggplot2)   
+library(grid)  
 
 # import set of trees and remove burnin
 import_burnin <- function(file_path, burnin = 0.1) {
@@ -60,8 +52,6 @@ plot_mrca_histograms_test_1 <- function(trees1, trees2, trees3, node1, node2) {
 
 # function to plot histograms of MRCA ages to compate 3 models for TEST 2
 plot_mrca_histograms_test_2 <- function(trees1, trees2, trees3, node1, node2) {
-  library(ggplot2)
-
   # Compute MRCA ages
   ages1 <- compute_mrca_ages(trees1, node1, node2)
   ages2 <- compute_mrca_ages(trees2, node1, node2)
