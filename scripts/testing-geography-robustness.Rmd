@@ -102,7 +102,7 @@ plot_mrca_histograms_test_2 <- function(trees1, trees2, trees3, node1, node2) {
   print(p)
 }
 
-
+# CODE TO RUN
 burnin <- 0.7
 posterior_trees <- import_burnin("../beast/pama-nyungan-first-30.trees", burnin)
 posterior_trees_GEO <- import_burnin("../beast/pama-nyungan-first-30-GEO.trees", burnin)

@@ -256,6 +256,31 @@ plot_mrca_sd_scatter <- function(trees1, trees2) {
   par(old_par)
 }
 
+# plot posterior support values from two MCC trees
+plot_posterior_supports <- function(tree1, tree2) {
+  #tree1 <- read.beast(tree1)
+  #tree2 <- read.beast(tree2)
+  
+  # extract posterior support values
+  support1 <- tree1@data$posterior
+  support2 <- tree2@data$posterior
+
+  # Plot
+  old_par <- par(no.readonly = TRUE)
+  par(mar = c(4, 5, 3, 1))
+  par(las = 1)
+
+  plot(support1, support2,
+       xlab = "Posterior support (Without geographic data)",
+       ylab = "Posterior support (With geographic data)",
+       main = "Comparison of Posterior Support in MCC Trees",
+       pch = 16, col = "purple", xlim = c(0, 1), ylim = c(0, 1))
+  abline(0, 1, col = "red", lty = 2)
+
+  par(old_par)
+}
+
+# CODE TO RUN
 MCC_tree <- read.nexus("../trees/pama-nyungan-first-30-MCC.tree")
 MCC_given <- read.tree("../pama-nyungan-data/pama-nyungan-MCC-reduced-30.tree")
 MCC_tree_GEO <- read.nexus("../trees/pama-nyungan-first-30-GEO-MCC.tree")
@@ -287,5 +312,3 @@ for (i in 1:29){
 }
 
 plot_mrca_histograms_if_directly_related(posterior_trees, posterior_trees_GEO, "ChampionBay", "Badimaya")
-
-

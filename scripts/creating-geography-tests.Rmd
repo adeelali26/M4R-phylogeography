@@ -89,6 +89,7 @@ update_locations_xml <- function(xml_file, coord_df, new_trace_file, new_tree_fi
   saveXML(doc, file = output_file)
 }
 
+# CODE TO RUN
 # get Australia's landmass as an sf object
 australia <- ne_countries(scale = "medium", country = "Australia", returnclass = "sf")
 

@@ -64,6 +64,7 @@ get_lineage_for_tip <- function(target, tree) {
     )
 }
 
+# CODE TO RUN
 MCC_tree <- read.nexus("../trees/pama-nyungan-first-30-MCC.tree")
 MCC_tree_GEO <- read.nexus("../trees/pama-nyungan-first-30-GEO-MCC.tree")
 

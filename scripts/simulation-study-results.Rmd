@@ -126,6 +126,7 @@ plot_mrca_histograms_3 <- function(trees1, trees2, true_tree, node1, node2, node
   print(p)
 }
 
+# CODE TO RUN
 MCC_tree <- read.nexus("../trees/simulation-study-cogs-MCC.tree")
 MCC_tree_GEO <- read.nexus("../trees/simulation-study-GEO-MCC.tree")
 simulated_tree <- read.tree("../simulated-data/simulated-tree.nwk")
